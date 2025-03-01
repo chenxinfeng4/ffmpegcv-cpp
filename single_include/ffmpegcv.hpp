@@ -157,7 +157,7 @@ public:
         _init(); 
     }
 
-    FFmpegVideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt="bgr24")
+    FFmpegVideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt)
         : filename(filename), codec(codec), fps(fps), size_wh(size_wh), width(size_wh.width), height(size_wh.height), pix_fmt(pix_fmt), process(NULL) { 
         _init(); 
     }
@@ -202,6 +202,7 @@ public:
 
     // 写入一帧
     bool write(const void *__restrict__ frame) {
+        if (frame==NULL) return false;
         if (!process) {std::cerr << "Failed to open video writer"; return false;}
         fwrite(frame, sizeof(char), bytes_per_frame, process);
         return true;
@@ -244,7 +245,7 @@ public:
         _init();
     }
 
-    FFmpegVideoCapture(const std::string& filename, const std::string& pix_fmt="bgr24")
+    FFmpegVideoCapture(const std::string& filename, const std::string& pix_fmt)
         : filename(filename), pix_fmt(pix_fmt), process(NULL) {
         _init();
     }
@@ -256,6 +257,7 @@ public:
         codec = videoinfo.codec;
         fps = videoinfo.fps;
         iframe = -1;
+        default_buffer = NULL;
 
         assert(width % 2 == 0 && "Height must be even");
         assert(height % 2 == 0 && "Width must be even");
@@ -288,6 +290,10 @@ public:
 
     // release
     void release() {
+        if (default_buffer) {
+            free(default_buffer);
+            default_buffer = NULL;
+        }
         if (process) {
             pclose(process);
             process = NULL;
@@ -297,6 +303,13 @@ public:
     // close
     void close() {
         release();
+    }
+
+    void* get_default_buffer(){
+        if (default_buffer == NULL){
+            default_buffer = (void*)malloc(bytes_per_frame);
+        }
+        return default_buffer;
     }
 
     // 读取一帧
@@ -348,9 +361,26 @@ public:
     int iframe;
     float fps;
     float duration;
+    void* default_buffer;
     std::string pix_fmt;
     std::string codec;
     Size_wh size_wh;
     std::vector<int> outnumpyshape;
 };
 //================End Video Reader==================
+
+void * operator>>(FFmpegVideoCapture& cap, void *__restrict__ frame) {
+    cap.read(frame);
+    return frame;
+}
+
+void operator>>(void *__restrict__ frame, FFmpegVideoWriter& writer) {
+    writer.write(frame);
+}
+
+void operator>>(FFmpegVideoCapture& cap, FFmpegVideoWriter& writer) {
+    void* frame = cap.get_default_buffer();
+    if (cap.read(frame)) {
+        writer.write(frame);
+    }
+}

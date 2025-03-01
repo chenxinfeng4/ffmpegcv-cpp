@@ -109,13 +109,64 @@ int main() {
     cout << "FPS: " << fps << ", Total Frames: " << totalFrames << endl;
 
     // 3. Show the video frame by frame
-    uint8_t *frame = new uint8_t[cap.heigth, cap.width, 3]; //frame buffer
+    uint8_t *frame = new uint8_t[cap.height*cap.width*3]; //frame buffer
     while (cap.read(frame)) {
         ; // do something
     }
 
     // 4. Release the video capture object
+    free(frame);
     cap.release();
     return 0;
+}
+```
+
+Profound usage using the stream-like api `cap >> frame`.
+```cpp
+uint8_t *frame = new uint8_t[cap.height*cap.width*3];
+while (true) {
+    cap >> frame;
+    if (!cap.isOpened()){
+        break;
+    }
+    ; // do something
+}
+
+```
+
+## Transcoding
+For transcoding, you can use the `FFmpegVideoWriter` class. Here is an example to use `cap >> frame >> writer`.
+
+```cpp
+// ffmpegcv api without opencv
+FFmpegVideoWriter writer("output.mp4", "x264", cap.fps, cap.size_wh);
+
+uint8_t *frame = new uint8_t[cap.height*cap.width*3];
+while (cap.isOpened()) {
+    cap >> frame >> writer;
+    ; // do something
+}
+```
+
+For simpler transcoding, that's hidding the frame. Link togethor `cap >> writer`.
+
+```cpp
+FFmpegVideoWriter writer("output.mp4", "x264", cap.fps, cap.size_wh);
+
+while (cap.isOpened()) {
+    cap >> writer;
+    uint8_t *frame = cap.get_default_buffer(); //the hidden frame
+    ; // do something
+}
+```
+
+Use the `yuv420p` pixel format is faster than the default `bgr` when do transcoding.
+```cpp
+FFmpegVideoCapture cap("your_video_file.mp4", pix_fmt="yuv420p");
+FFmpegVideoWriter writer("output.mp4", "x264", cap.fps, cap.size_wh, pix_fmt=cap.pix_fmt);
+
+while (cap.isOpened()) {
+    cap >> writer;
+    ; // do something
 }
 ```
