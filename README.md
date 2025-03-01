@@ -1,4 +1,6 @@
 # FFmpegCV - OpenCV Alternative for Video I/O
+![Last Commit](https://shields.io/github/last-commit/chenxinfeng4/ffmpegcv-cpp)![GitHub issues](https://img.shields.io/github/issues/chenxinfeng4/ffmpegcv-cpp)
+
 
 FFmpegCV provides high-performance video reading and writing capabilities using FFmpeg as its backend. Designed as a drop-in replacement for OpenCV's video I/O functionality, it offers:
 
