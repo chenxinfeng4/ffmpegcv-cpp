@@ -305,7 +305,7 @@ public:
         release();
     }
 
-    void* get_default_buffer(){
+    void* getBuffer(){
         if (default_buffer == NULL){
             default_buffer = (void*)malloc(bytes_per_frame);
         }
