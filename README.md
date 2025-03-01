@@ -86,7 +86,7 @@ int main() {
 
     return 0;
 }
-
+```
 
 Here is the `ffmpegcv` version. The frame is stored in a `uint8_t` array, as
 HxWx3 in shape, and BGR as pixel format.
@@ -119,4 +119,3 @@ int main() {
     return 0;
 }
 ```
-
