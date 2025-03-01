@@ -1,15 +1,15 @@
-# FFMPEGCV is an alternative to OPENCV for video reading&writing.
+# FFMPEGCV is an alternative to OPENCV for video reader&writer.
 
 The ffmpegcv provide Video Reader and Video Witer with ffmpeg backbone, which are faster and powerful than cv2. Integrating ffmpegcv into your deeplearning pipeline is very smooth.
 
-Here is the C++ version of ffmpegcv. You can also use the python version [ffmpegcv](https://github.com/chenxinfeng4/ffmpegcv).
+Here is the **C++ version** of ffmpegcv. You can also use the **Python version** [ffmpegcv](https://github.com/chenxinfeng4/ffmpegcv).
 
 
 - The ffmpegcv is api **compatible** to open-cv. 
 - The ffmpegcv supports **RGB** & BGR & GRAY format as you like.
 - ...On the way
 
-In all, ffmpegcv is just similar to opencv api. But it has more codecs and does't require opencv installed at all. It's great for deeplearning pipeline.
+In all, ffmpegcv is just similar to opencv api. But it has no dependency on opencv, SMALL size, and easy to install and cross platforms.
 
 
 ## Install
@@ -22,6 +22,11 @@ You need to download ffmpeg before you can use ffmpegcv.
  
 #2 Download the single_include file
 curl -o ffmpegcv.hpp https://raw.githubusercontent.com/chenxinfeng4/ffmpegcv-cpp/main/single_include/ffmpegcv.hpp
+
+#3 copy ffmpegcv.hpp to your project
+cp ffmpegcv.hpp /path/to/your/project
+
+g++ -std=c++11 -o main main.cpp  // compile at least C++11
 
 ```
 
@@ -54,6 +59,7 @@ The ffmpegcv is just similar to opencv in api.
 Here is the `OpenCV` version of reading a video.
 ```cpp
 // opencv api
+// g++ -std=c++11 -o main main.cpp `pkg-config --cflags --libs opencv4`
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
@@ -93,6 +99,7 @@ HxWx3 in shape, and BGR as pixel format.
 
 ```cpp
 // ffmpegcv api without opencv
+// g++ -std=c++11 -o main main.cpp
 #include <ffmpegcv.hpp>
 using namespace std;
 
@@ -131,7 +138,6 @@ while (true) {
     }
     ; // do something
 }
-
 ```
 
 ## Transcoding
