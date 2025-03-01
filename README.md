@@ -15,13 +15,13 @@ In all, ffmpegcv is just similar to opencv api. But it has more codecs and does'
 ## Install
 You need to download ffmpeg before you can use ffmpegcv.
 ```
- #1A. LINUX: sudo apt install ffmpeg
- #1B. MAC (No NVIDIA GPU): brew install ffmpeg
- #1C. WINDOWS: download ffmpeg and add to the path
- #1D. CONDA: conda install ffmpeg=6.0.0     #don't use the default 4.x.x version
+#1A. LINUX: sudo apt install ffmpeg
+#1B. MAC (No NVIDIA GPU): brew install ffmpeg
+#1C. WINDOWS: download ffmpeg and add to the path
+#1D. CONDA: conda install ffmpeg=6.0.0     #don't use the default 4.x.x version
  
- #2
- wget xxx/ffmpegcv_cpp/single_include/ffmpegcv.hpp
+#2 Download the single_include file
+curl -o ffmpegcv.hpp https://raw.githubusercontent.com/chenxinfeng4/ffmpegcv-cpp/main/single_include/ffmpegcv.hpp
 
 ```
 
