@@ -51,6 +51,7 @@ void main() {
 ---
 The ffmpegcv is just similar to opencv in api.
 
+Here is the `OpenCV` version of reading a video.
 ```cpp
 // opencv api
 #include <opencv2/opencv.hpp>
@@ -60,10 +61,10 @@ using namespace cv;
 using namespace std;
 
 int main() {
-    // 1. 打开视频文件
+    // 1. Open the video file
     VideoCapture cap("your_video_file.mp4");
 
-    // 2. 获取视频信息
+    // 2. Get the video information
     int frameWidth = static_cast<int>(cap.get(CAP_PROP_FRAME_WIDTH)); // 视频的宽度
     int frameHeight = static_cast<int>(cap.get(CAP_PROP_FRAME_HEIGHT)); // 视频的高度
     double fps = cap.get(CAP_PROP_FPS); // 视频的帧率
@@ -71,21 +72,15 @@ int main() {
     cout << "Frame Width: " << frameWidth << ", Frame Height: " << frameHeight << endl;
     cout << "FPS: " << fps << ", Total Frames: " << totalFrames << endl;
 
-    // 3. 逐帧读取并显示视频
+    // 3. Show the video frame by frame
     Mat frame;
     namedWindow("Video", WINDOW_AUTOSIZE); // 创建一个窗口用于显示视频
 
-    while (true) {
-        cap >> frame; // 读取一帧
-
-        if (frame.empty()) { // 如果视频结束，退出循环
-            break;
-        }
-
+    while (cap.read(frame)) {
         imshow("Video", frame); // 显示当前帧
     }
 
-    // 4. 释放资源并关闭窗口
+    // 4. Release the video capture object
     cap.release();
     destroyAllWindows();
 
@@ -93,58 +88,35 @@ int main() {
 }
 
 
+Here is the `ffmpegcv` version. The frame is stored in a `uint8_t` array, as
+HxWx3 in shape, and BGR as pixel format.
+
 ```cpp
 // ffmpegcv api without opencv
 #include <ffmpegcv.hpp>
 using namespace std;
 
 int main() {
-    // 1. 打开视频文件
+    // 1. Open the video file
     FFmpegVideoCapture cap("your_video_file.mp4");
 
-    // 2. 获取视频信息
+    // 2. Get the video information
     int frameWidth = cap.width;
-    int frameHeight = cap.height; // 视频的高度
-    double fps = cap.fps; // 视频的帧率
-    int totalFrames = cap.count; // 总帧数
+    int frameHeight = cap.height;
+    double fps = cap.fps;
+    int totalFrames = cap.count;
     cout << "Frame Width: " << frameWidth << ", Frame Height: " << frameHeight << endl;
     cout << "FPS: " << fps << ", Total Frames: " << totalFrames << endl;
 
-    // 3. 逐帧读取并显示视频
+    // 3. Show the video frame by frame
     uint8_t *frame = new uint8_t[cap.heigth, cap.width, 3]; //frame buffer
     while (cap.read(frame)) {
         ; // do something
     }
 
+    // 4. Release the video capture object
     cap.release();
     return 0;
 }
 ```
 
-```cpp
-// ffmpegcv api with opencv
-#include <ffmpegcv.hpp>
-using namespace std;
-
-int main() {
-    // 1. 打开视频文件
-    FFmpegVideoCapture cap("your_video_file.mp4");
-
-    // 2. 获取视频信息
-    int frameWidth = cap.width;
-    int frameHeight = cap.height; // 视频的高度
-    double fps = cap.fps; // 视频的帧率
-    int totalFrames = cap.count; // 总帧数
-    cout << "Frame Width: " << frameWidth << ", Frame Height: " << frameHeight << endl;
-    cout << "FPS: " << fps << ", Total Frames: " << totalFrames << endl;
-
-    // 3. 逐帧读取并显示视频
-    uint8_t *frame = new uint8_t[cap.heigth, cap.width, 3]; //frame buffer
-    while (cap.read(frame)) {
-        ; // do something
-    }
-
-    cap.release();
-    return 0;
-}
-```
