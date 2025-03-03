@@ -414,21 +414,21 @@ public:
 public:
     std::string filename;   // 输入文件名
     std::string pix_fmt;    // 输出像素格式
-    std::tuple<int, int, int, int> crop_xywh;
+    std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0};
     Size_wh resize;
     FILE* process;          // 内部使用 VideoCapture
     int bytes_per_frame;    // 每帧的位数
-    int width;
-    int height;
-    int origin_width;
-    int origin_height;
-    int count;
-    int iframe;
-    float fps;
-    float duration;
+    int width = 0;
+    int height = 0;
+    int origin_width = 0;
+    int origin_height = 0;
+    int count = 0;
+    int iframe = -1;
+    float fps = 0;
+    float duration = 0;
     void* default_buffer;
-    std::string codec;
-    Size_wh size_wh;
+    std::string codec = "";
+    Size_wh size_wh = {0, 0};
     std::vector<int> outnumpyshape;
 };
 

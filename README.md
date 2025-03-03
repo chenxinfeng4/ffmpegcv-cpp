@@ -164,6 +164,20 @@ FFmpegVideoCapture cap(filename, "gray");
 FFmpegVideoWriter writer(filename, codec, fps, "gray");
 ```
 
+## Supported ROI Operations
+Crop xywh rectangle from the video frame, via `crop_xywh`.
+```cpp
+FFmpegVideoCapture cap(filename, "bgr24", crop_xwyh={x, y, w, h});  
+// The origin point is top-left corner of video. 
+// All values should be even (x%2==0, y%2==0, w%2==0, h%2==0).
+```
+
+Resize the video frame, via `resize`.
+```cpp
+FFmpegVideoCapture cap(filename, "bgr24", resize={w, h});
+// All values should be even (w%2==0, h%2==0).
+```
+
 
 ## Documentation
 | Class                | Methods                          | Properties                  |
