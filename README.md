@@ -89,7 +89,16 @@ int main() {
 #include "ffmpegcv.hpp"
 
 int main() {
+    FFmpegVideoCapture cap("input.mp4");
+    uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
 
+    while (cap.read(frame)) {
+        // Processing frame
+    }
+    
+    delete[] frame;
+    cap.release();
+    return 0;
 }
 ```
 
