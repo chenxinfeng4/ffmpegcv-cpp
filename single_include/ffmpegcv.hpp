@@ -67,12 +67,12 @@ VideoInfo get_info(const std::string& filename) {
     VideoInfo info;
     info.is_complex = is_complex;
 
-    static const std::regex codec_re( "codec_name.: .\"(\\w+)");
+    static const std::regex codec_re( "codec_name.: .(\\w+)");
     static const std::regex width_re( "width.: (\\d+)");
     static const std::regex height_re( "height.: (\\d+)");
     static const std::regex frames_re( "nb_frames.: .(\\d+)");
     static const std::regex nb_read_packets_re( "nb_read_packets.: .(\\d+)");
-    static const std::regex duration_re( "duration.: .([\\d.]+)");
+    static const std::regex duration_re( "duration.: .([0-9]*\\.?[0-9]+)");
     static const std::regex rate_re( "r_frame_rate.: .(\\d+)/(\\d+)");
 
     std::smatch match;
@@ -149,22 +149,28 @@ std::vector<int> get_outnumpyshape(Size_wh size_wh, std::string pix_fmt) {
 class FFmpegVideoWriter {
 public:
     // 构造函数
-    FFmpegVideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, int isColor = true)
-        : filename(filename), codec(codec), fps(fps), size_wh(size_wh), width(size_wh.width), height(size_wh.height) {
+    FFmpegVideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, int isColor = true,
+        std::string bitrate = "", std::string ffmpeg_output_opt = "")
+        : filename(filename), codec(codec), fps(fps), size_wh(size_wh), width(size_wh.width), height(size_wh.height), 
+        bitrate(bitrate), ffmpeg_output_opt(ffmpeg_output_opt){
         pix_fmt = isColor ? "bgr24" : "gray";
         _init();
     }
 
-    FFmpegVideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt)
-        : filename(filename), codec(codec), fps(fps), size_wh(size_wh), width(size_wh.width), height(size_wh.height), pix_fmt(pix_fmt) {
+    FFmpegVideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt,
+        std::string bitrate = "", std::string ffmpeg_output_opt = "")
+        : filename(filename), codec(codec), fps(fps), size_wh(size_wh), width(size_wh.width), height(size_wh.height), pix_fmt(pix_fmt),
+        bitrate(bitrate), ffmpeg_output_opt(ffmpeg_output_opt){
         _init();
     }
 
     void _init() {
-        if (codec.empty()) codec = "x264"; // if codec empty, set to "x264"
+        if (codec.empty()) codec = "h264"; // if codec empty, set to "h264"
+        if (!bitrate.empty()) bitrate = " -b:v " + bitrate + " ";  // if bitrate not empty, set to "-b:v bitrate"
         std::ostringstream oss;
         oss << "ffmpeg -y -loglevel warning -f rawvideo -pix_fmt " << pix_fmt << " -s " << width << "x" << height
-            << " -r " << fps << " -i pipe: -c:v " << codec << " -pix_fmt yuv420p \"" << filename << "\"";
+            << " -r " << fps << " -i pipe: -c:v " << codec << " -pix_fmt yuv420p "
+            << ffmpeg_output_opt << bitrate << "\"" << filename << "\"";
         std::string ffmpeg_cmd = oss.str();
         std::cout << "ffmpeg_cmd: " << ffmpeg_cmd << std::endl;
         process = popen(ffmpeg_cmd.c_str(), "w");
@@ -229,6 +235,8 @@ public:
     int width = 0;
     int height = 0;
     std::string pix_fmt = "bgr24"; // 输入的像素格式
+    std::string bitrate = "";       // 码率
+    std::string ffmpeg_output_opt = ""; // ffmpeg 输出选项
     FILE* process = NULL;          // 内部使用 VideoWriter
     std::vector<int> innumpyshape = {0, 0}; // 输入的尺寸
     int bytes_per_frame = 0;       // 每帧的位数
@@ -271,9 +279,8 @@ std::tuple<Size_wh, Size_wh, std::string> get_videofilter_cpu(
     std::string padopt="";
     if (!resize.empty() && (resize_width != 0 || resize_height != 0)) {
         assert (resize_width % 2 == 0 && resize_height % 2 == 0);
-        int dst_width = resize_width;
-        int dst_height = resize_height;
-        scaleopt = "scale=" + std::to_string(dst_width) + "x" + std::to_string(dst_height);
+        final_size_wh = resize;
+        scaleopt = "scale=" + std::to_string(resize_width) + "x" + std::to_string(resize_height);
     }
 
     //pix_fmt option
@@ -311,6 +318,8 @@ public:
         origin_height = height = videoinfo.height;
         codec = videoinfo.codec;
         fps = videoinfo.fps;
+        duration = videoinfo.duration;
+        count = videoinfo.count;
         iframe = -1;
         default_buffer = NULL;
 
@@ -369,11 +378,11 @@ public:
         release();
     }
 
-    void* getBuffer(){
+    uint8_t* getBuffer(){
         if (default_buffer == NULL){
             default_buffer = (void*)malloc(bytes_per_frame);
         }
-        return default_buffer;
+        return static_cast<uint8_t*>(default_buffer);
     }
 
     // 读取一帧
@@ -443,15 +452,19 @@ void operator>>(void* __restrict__ frame, FFmpegVideoWriter& writer) {
     writer.write(frame);
 }
 
+void operator<<(FFmpegVideoWriter& writer, void* __restrict__ frame) {
+    writer.write(frame);
+}
+
 void operator>>(FFmpegVideoCapture& cap, FFmpegVideoWriter& writer) {
-    void* frame = cap.getBuffer();
+    void* frame = static_cast<void*>(cap.getBuffer());
     if (cap.read(frame)) {
         writer.write(frame);
     }
 }
 
 FFmpegVideoWriter& operator<<(FFmpegVideoWriter& writer, FFmpegVideoCapture& cap) {
-    void* frame = cap.getBuffer();
+    void* frame = static_cast<void*>(cap.getBuffer());
     if (cap.read(frame)) {
         writer.write(frame);
     }

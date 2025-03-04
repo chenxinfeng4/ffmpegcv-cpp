@@ -9,7 +9,7 @@ FFmpegCV provides high-performance video reading and writing capabilities using 
 - 🌐 **Universal Compatibility** - Windows/Linux/macOS with consistent API
 - 🎨 **Multi-ColorSpace Support** - Native RGB24, BGR24, YUV420P, and Grayscale
 - 💾 **Direct Memory Access** - Frame data stored in contiguous `uint8_t` arrays
-- ⚡ **Stream-Optimized API** - Native C++ operators (`>>`/`<<`) for pipeline processing
+- ⚡ **Stream-Optimized API** - Native C++ operators (`>>`, `<<`) for pipeline processing
 
 
 For Python users, check out the [Python version of FFmpegCV](https://github.com/chenxinfeng4/ffmpegcv).
@@ -44,7 +44,7 @@ int main() {
     auto frame_size = {cap.width, cap.height};
     
     // Initialize video writer (H.264 codec)
-    FFmpegVideoWriter writer("output.mp4", "x264", cap.fps, frame_size);
+    FFmpegVideoWriter writer("output.mp4", "h264", cap.fps, frame_size);
     
     // Frame buffer (BGR format)
     uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
@@ -89,16 +89,7 @@ int main() {
 #include "ffmpegcv.hpp"
 
 int main() {
-    FFmpegVideoCapture cap("input.mp4");
-    uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
-    
-    while (cap.read(frame)) {
-        // Processing frame
-    }
-    
-    delete[] frame;
-    cap.release();
-    return 0;
+
 }
 ```
 
@@ -107,7 +98,7 @@ int main() {
 ### Stream-like API
 ```cpp
 FFmpegVideoCapture cap("input.mp4");
-FFmpegVideoWriter writer("output.mp4", "x264", cap.fps, {cap.width, cap.height});
+FFmpegVideoWriter writer("output.mp4", "h264", cap.fps, {cap.width, cap.height});
 uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
 
 while (true) {
@@ -117,13 +108,16 @@ while (true) {
     // Process frame
     writer << frame;  // Stream insertion
 }
+delete[] frame;
+cap.release()
+writer.release()
 ```
 
 ### Efficient Transcoding
 ```cpp
 // Direct pipe-through with YUV420P format
 FFmpegVideoCapture cap("input.mp4", "yuv420p");
-FFmpegVideoWriter writer("output.mp4", "x264", cap.fps, 
+FFmpegVideoWriter writer("output.mp4", "h264", cap.fps, 
                         {cap.width, cap.height}, cap.pix_fmt);
 
 while (cap.isOpened()) {
@@ -137,7 +131,7 @@ Please run `ffmpeg -codecs` in your terminal to get the list of supported codecs
 
 | Codec   | OpenCV alias   | Description       |
 |---------|--------|---------------------------|
-| `x264`  | `avc1` | H.264 codec (recommended) |
+| `h264`  | `avc1` | H.264 codec (recommended) |
 | `hevc`  | `hev1` | H.265 codec               |
 | `mpeg4` | `mp4v` | MPEG-4 codec              | 
 | `mjpeg` | `mjpg` | Motion JPEG codec         | 
@@ -167,14 +161,21 @@ FFmpegVideoWriter writer(filename, codec, fps, "gray");
 ## Supported ROI Operations
 Crop xywh rectangle from the video frame, via `crop_xywh`.
 ```cpp
-FFmpegVideoCapture cap(filename, "bgr24", crop_xwyh={x, y, w, h});  
+FFmpegVideoCapture cap(filename,
+                       "bgr24",
+                       {x, y, w, h}  //crop rectangle
+);  
 // The origin point is top-left corner of video. 
 // All values should be even (x%2==0, y%2==0, w%2==0, h%2==0).
 ```
 
 Resize the video frame, via `resize`.
 ```cpp
-FFmpegVideoCapture cap(filename, "bgr24", resize={w, h});
+FFmpegVideoCapture cap(filename,
+                       "bgr24",
+                       {0,0,0,0},  // no crop
+                       {w, h}
+);
 // All values should be even (w%2==0, h%2==0).
 ```
 
