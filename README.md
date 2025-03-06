@@ -1,15 +1,19 @@
 # FFmpegCV - OpenCV Alternative for Video I/O
+![C++ versions](https://img.shields.io/badge/C++-≥11-blue.svg)
 ![Last Commit](https://shields.io/github/last-commit/chenxinfeng4/ffmpegcv-cpp)![GitHub issues](https://img.shields.io/github/issues/chenxinfeng4/ffmpegcv-cpp)
-
+![Code size](https://shields.io/github/languages/code-size/chenxinfeng4/ffmpegcv-cpp
+)
 
 FFmpegCV provides high-performance video reading and writing capabilities using FFmpeg as its backend. Designed as a drop-in replacement for OpenCV's video I/O functionality, it offers:
 
 - 🚀 **Fast Speed** through FFmpeg integration
-- 📦 **Lightweight Architecture** - Zero OpenCV dependencies (20 KB vs OpenCV's 500 MB+)
+- 📦 **Lightweight Architecture** - Zero OpenCV dependencies (26 KB vs OpenCV's 500 MB+)
 - 🌐 **Universal Compatibility** - Windows/Linux/macOS with consistent API
 - 🎨 **Multi-ColorSpace Support** - Native RGB24, BGR24, YUV420P, and Grayscale
 - 💾 **Direct Memory Access** - Frame data stored in contiguous `uint8_t` arrays
 - ⚡ **Stream-Optimized API** - Native C++ operators (`>>`, `<<`) for pipeline processing
+- **ROI Operations** - Crop, resize the video while reading
+- **GPU Support** for CUDA-enabled GPUs (e.g RTX 2060, Tesla V100, ...)
 
 
 For Python users, check out the [Python version of FFmpegCV](https://github.com/chenxinfeng4/ffmpegcv).
@@ -178,7 +182,7 @@ FFmpegCV **only supports common color spaces** for video processing.
 | `yuv420p` | YUV420P format (efficient for transcode) | (h*3/2, w) |
 | `gray` | gray format | (h, w) |
 
-To use the `gray` codec, you can run
+The `gray` color would save much time than `bgr24/rgb24`, because it extract the `Y` from `yuv420p` without any color space transfermation. To use the `gray` pixel format, you can run
 ```cpp
 ffmpegcv::VideoCapture cap(filename, "gray");
 ffmpegcv::VideoWriter writer(filename, codec, fps, "gray");
