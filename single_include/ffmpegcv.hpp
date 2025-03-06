@@ -1,6 +1,7 @@
 #pragma once
 #define FFMPEGCV_H
 
+#include <fstream>
 #include <iostream>
 #include <cstdio>
 #include <cstring>
@@ -62,9 +63,9 @@ class VideoWriter {
 public:
     VideoWriter();
     VideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, int isColor = true,
-        std::string bitrate = "", std::string ffmpeg_output_opt = "");
+        std::string ffmpeg_output_opt = "");
     VideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt,
-        std::string bitrate = "", std::string ffmpeg_output_opt = "");
+        std::string ffmpeg_output_opt = "");
     ~VideoWriter();
     void initializer();
     void release();
@@ -76,21 +77,20 @@ public:
     bool isOpened() const;
 
 public:
-    std::string filename;
-    std::string codec;
-    double fps;
-    Size_wh size_wh;
-    int width;
-    int height;
-    std::string pix_fmt;
-    std::string output_pix_fmt="yuv420p";
-    std::string bitrate;
-    std::string ffmpeg_output_opt;
+    std::string filename = "";
+    std::string codec = "h264";
+    double fps = 0;
+    Size_wh size_wh = Size_wh(0,0);
+    int width = 0;
+    int height = 0;
+    std::string pix_fmt = "bgr24";
+    std::string output_pix_fmt = "yuv420p";
+    std::string ffmpeg_output_opt = "";
     bool waitInit = true;
     FILE* process;
     std::vector<int> innumpyshape;
     int bytes_per_frame;
-    std::string ffmpeg_cmd;
+    std::string ffmpeg_cmd = "";
 
 };
 
@@ -165,6 +165,26 @@ public:
     void initializer() override;
 };
 
+std::tuple<Size_wh, Size_wh, std::string, std::string> get_videofilter_gpu(
+    Size_wh originsize, std::string pix_fmt, std::tuple<int, int, int, int> crop_xywh, Size_wh resize);
+int get_num_NVIDIA_GPUs();
+
+class VideoCaptureNV: public VideoCapture {
+public:
+    VideoCaptureNV();
+    VideoCaptureNV(const std::string& filename, int isColor = true, 
+        std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0},
+        Size_wh resize = Size_wh(0,0), int gpu = 0);
+
+    VideoCaptureNV(const std::string& filename, std::string pix_fmt,
+        std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0},
+        Size_wh resize = Size_wh(0,0), int gpu = 0);
+
+    void initializer() override;
+
+private:
+    int gpu = 0;
+};
 
 } //END NAMESPACE FFMPEGCV
 
@@ -207,9 +227,14 @@ std::string execute_command(const std::string& command) {
     return result;
 }
 
-VideoInfo get_info(const std::string& filename) {
-    static const std::vector<std::string> complex_formats = {"mkv", "flv", "ts"};
+bool file_exsits(const std::string& filename) {
+    std::ifstream file(filename);
+    return file.good();
+}
 
+VideoInfo get_info(const std::string& filename) {
+    assert (file_exsits(filename) && "File does not exist");
+    static const std::vector<std::string> complex_formats = {"mkv", "flv", "ts"};
     const bool is_complex = std::find(complex_formats.begin(), complex_formats.end(), 
         get_file_extension(filename)) != complex_formats.end();
 
@@ -321,33 +346,32 @@ std::vector<int> get_outnumpyshape(Size_wh size_wh, std::string pix_fmt) {
 VideoWriter::VideoWriter(){;}
 
 VideoWriter::VideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, int isColor,
-    std::string bitrate, std::string ffmpeg_output_opt):
-    filename(filename), codec(codec), fps(fps), size_wh(size_wh), pix_fmt(isColor ? "bgr24" : "gray"), bitrate(bitrate), ffmpeg_output_opt(ffmpeg_output_opt)
+    std::string ffmpeg_output_opt):
+    filename(filename), codec(codec), fps(fps), size_wh(size_wh), pix_fmt(isColor ? "bgr24" : "gray"), ffmpeg_output_opt(ffmpeg_output_opt)
     {
     initializer();
 }
 
 
 VideoWriter::VideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt,
-    std::string bitrate, std::string ffmpeg_output_opt):
-    filename(filename), codec(codec), fps(fps), size_wh(size_wh), pix_fmt(pix_fmt), bitrate(bitrate), ffmpeg_output_opt(ffmpeg_output_opt)
+    std::string ffmpeg_output_opt):
+    filename(filename), codec(codec), fps(fps), size_wh(size_wh), pix_fmt(pix_fmt), ffmpeg_output_opt(ffmpeg_output_opt)
     {
     initializer();
 }
 
 void VideoWriter::initializer(){
     codec = codec.empty() ? "h264" : codec;
-    bitrate = bitrate.empty() ? "" : " -b:v " + bitrate + " ";
     width = size_wh.width;
     height = size_wh.height;
     process = 0;
-    std::string rtsp_str = startsWith(filename, "rtsp://") ? " -f rtsp -rtsp_transport tcp " : "";
+    std::string rtsp_str = startsWith(filename, "rtsp://") ? " -f rtsp -rtsp_transport tcp " : " ";
 
     std::ostringstream oss;
     oss << "ffmpeg -y -loglevel warning -f rawvideo -pix_fmt " << pix_fmt 
         << " -s " << width << "x" << height << " -r " << fps 
         << " -i pipe: -c:v " << codec << " -pix_fmt " << output_pix_fmt
-        << bitrate << ffmpeg_output_opt << rtsp_str << " \"" << filename << "\"";
+        << ffmpeg_output_opt << rtsp_str << " \"" << filename << "\"";
     ffmpeg_cmd = oss.str();
     std::cout << "ffmpeg_cmd: " << ffmpeg_cmd << std::endl;
 
@@ -566,7 +590,7 @@ const int VideoCapture::len() {
     return count;
 }
 
-VideoCaptureStreamRT::VideoCaptureStreamRT(){;}
+VideoCaptureStreamRT::VideoCaptureStreamRT():VideoCapture(){;}
 
 VideoCaptureStreamRT::VideoCaptureStreamRT(const std::string& filename, int isColor, 
     std::tuple<int, int, int, int> crop_xywh, Size_wh resize):
@@ -629,7 +653,161 @@ void VideoCaptureStreamRT::initializer() {
     }
 }
 
+std::string decoder_to_nvidia(const std::string& codec) {
+    if (codec == "av1")  return "av1_cuvid";
+    if (codec == "h264") return "h264_cuvid";
+    if (codec == "x264") return "h264_cuvid";
+    if (codec == "hevc") return "hevc_cuvid";
+    if (codec == "x265") return "hevc_cuvid";
+    if (codec == "h265") return "hevc_cuvid";
+    if (codec == "mjpeg") return "mjpeg_cuvid";
+    if (codec == "mpeg1video") return "mpeg1_cuvid";
+    if (codec == "mpeg2video") return "mpeg2_cuvid";
+    if (codec == "mpeg4") return "mpeg4_cuvid";
+    if (codec == "vp1") return "vp1_cuvid";
+    if (codec == "vp8") return "vp8_cuvid";
+    if (codec == "vp9") return "vp9_cuvid";
+    throw std::runtime_error("No NV codec found for " + codec);
+}
+
+int get_num_NVIDIA_GPUs() {
+    static int num_NVIDIA_GPUs = -1;
+    if (num_NVIDIA_GPUs == -1) {
+        std::cout << "Getting number of NVIDIA GPUs...\n";
+        std::string cmd = "ffmpeg -f lavfi -i nullsrc -c:v h264_nvenc -gpu list -f null - 2>&1";
+        std::string output = execute_command(cmd);
+
+        std::regex pattern(R"(GPU #\d+ - < )");
+        auto nv_info_begin = std::sregex_iterator(output.begin(), output.end(), pattern);
+        auto nv_info_end = std::sregex_iterator();
+
+        num_NVIDIA_GPUs = std::distance(nv_info_begin, nv_info_end);
+    }
+    return num_NVIDIA_GPUs;
+}
+
+
+std::tuple<Size_wh, Size_wh, std::string, std::string> get_videofilter_gpu(
+    Size_wh originsize, std::string pix_fmt, std::tuple<int, int, int, int> crop_xywh, Size_wh resize
+){
+    static const std::vector<std::string> allowed_pix_fmts = {"rgb24", "bgr24", "yuv420p", "yuvj420p", "nv12", "gray"};
+    assert(std::find(allowed_pix_fmts.begin(), allowed_pix_fmts.end(), pix_fmt) != allowed_pix_fmts.end());
+    int origin_width = originsize.width;
+    int origin_height = originsize.height;
+    int crop_x = std::get<0>(crop_xywh);
+    int crop_y = std::get<1>(crop_xywh);
+    int crop_w = std::get<2>(crop_xywh);
+    int crop_h = std::get<3>(crop_xywh);
+    int resize_width = resize.width;
+    int resize_height = resize.height;
+
+    std::string cropopt;
+    if (crop_w != 0 && crop_h != 0) {
+        assert(crop_x % 2 == 0 && crop_y % 2 == 0 && crop_w % 2 == 0 && crop_h % 2 == 0);
+        assert(crop_w <= origin_width && crop_h <= origin_height);
+        int top(crop_y);
+        int left(crop_x);
+        int bottom(origin_height - (crop_h + crop_y));
+        int right(origin_width - (crop_x + crop_w));
+        cropopt = "-crop" + std::to_string(top) + "x" + std::to_string(bottom) + 
+                    "x" + std::to_string(left) + "x" + std::to_string(right);
+    } else {
+        crop_w = origin_width;
+        crop_h = origin_height;
+        cropopt = "";
+    }
+    Size_wh cropsize = {crop_w, crop_h};
+    Size_wh final_size_wh = cropsize;
+
+    std::string scaleopt="";
+    std::string padopt="";
+    if (!resize.empty() && (resize_width != 0 || resize_height != 0)) {
+        assert (resize_width % 2 == 0 && resize_height % 2 == 0);
+        final_size_wh = resize;
+        scaleopt = "-resize " + std::to_string(resize_width) + "x" + std::to_string(resize_height);
+    }
+
+    std::string inputstr = cropopt + " " + scaleopt;
+    std::string filterstr = "";
+    std::string pix_fmt_opt = (pix_fmt == "gray") ? "extractplanes=y" : "";
+    if (!pix_fmt_opt.empty()) {
+        filterstr = "-vf " + pix_fmt_opt;
+    }
+    return std::make_tuple(cropsize, final_size_wh, inputstr, filterstr);
+}
+
+
+VideoCaptureNV::VideoCaptureNV():VideoCapture(){;}
+
+VideoCaptureNV::VideoCaptureNV(const std::string& filename, int isColor, 
+    std::tuple<int, int, int, int> crop_xywh, Size_wh resize, int gpu):
+    VideoCapture(){
+    this->filename = filename;
+    this->crop_xywh = crop_xywh;
+    this->resize = resize;
+    this->pix_fmt = isColor ? "bgr24" : "gray";
+    this->gpu = gpu;
+    initializer();
+}
+
+VideoCaptureNV::VideoCaptureNV(const std::string& filename, std::string pix_fmt,
+    std::tuple<int, int, int, int> crop_xywh, Size_wh resize, int gpu):
+    VideoCapture(){
+    this->filename = filename;
+    this->crop_xywh = crop_xywh;
+    this->resize = resize;
+    this->pix_fmt = pix_fmt;
+    this->gpu = gpu;
+    initializer();
+}
+
+
+void VideoCaptureNV::initializer() {
+    int numGPU = get_num_NVIDIA_GPUs();
+    assert (numGPU > 0 && "No NVIDIA GPU found");
+    gpu = gpu % numGPU;
+
+    VideoInfo videoinfo = get_info(filename);
+    origin_width = width = videoinfo.width;
+    origin_height = height = videoinfo.height;
+    codec = videoinfo.codec;
+    codec = decoder_to_nvidia(codec);
+    fps = videoinfo.fps;
+    duration = 0;
+    count = 0;
+    iframe = -1;
+    default_buffer = NULL;
+    waitInit = true;
+
+    assert(width % 2 == 0 && "Height must be even");
+    assert(height % 2 == 0 && "Width must be even");
+
+    std::tuple<Size_wh, Size_wh, std::string, std::string> filter_options = get_videofilter_gpu(
+        {width, height}, pix_fmt, crop_xywh, resize);
+    size_wh = std::get<1>(filter_options);
+    std::string inputstr = std::get<2>(filter_options);
+    std::string filterstr = std::get<3>(filter_options);
+    width = size_wh.width;
+    height = size_wh.height;
     
+    // 初始化 ffmpeg 的 VideoCapture
+    std::ostringstream oss;
+    oss << "ffmpeg -loglevel warning -hwaccel cuda -hwaccel_device " 
+        << gpu << " -vcodec " << codec << " " << inputstr << " -i \"" 
+        << filename << "\" -f rawvideo "
+        << filterstr << " -pix_fmt " << pix_fmt << " pipe:";
+
+    ffmpeg_cmd = oss.str();
+    std::cout << "ffmpeg_cmd: " << ffmpeg_cmd << std::endl;
+
+    // 计算每帧的位数
+    outnumpyshape = get_outnumpyshape(size_wh, pix_fmt);
+    bytes_per_frame = 1;
+    for (int num : outnumpyshape) {
+        bytes_per_frame *= num;
+    }
+}
+
 } // END NAMESPACE ffmpegcv
 
 

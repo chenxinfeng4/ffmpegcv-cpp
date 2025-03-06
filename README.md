@@ -137,6 +137,15 @@ while (cap.isOpened()) {
 }
 ```
 
+## GPU support (NVIDIA only)
+Use GPU to accelerate decoding. It depends on the video codes.
+h264_nvcuvid, hevc_nvcuvid ....
+```c++
+auto cap_cpu  = ffmpegcv::VideoCapture(file)
+auto cap_gpu  = ffmpegcv::VideoCaptureNV(file)         #NVIDIA GPU0
+auto cap_gpu1 = ffmpegcv::VideoCaptureNV(file, ..., gpu=1)  #NVIDIA GPU1
+```
+
 ## Codecs for Video Writer
 Please run `ffmpeg -codecs` in your terminal to get the list of supported codecs.
 
@@ -147,6 +156,12 @@ Please run `ffmpeg -codecs` in your terminal to get the list of supported codecs
 | `mpeg4` | `mp4v` | MPEG-4 codec              | 
 | `mjpeg` | `mjpg` | Motion JPEG codec         | 
 | ...     | ...    | ...                       |
+
+To use the `h264` codec, you can run one of the following:
+```cpp
+ffmpegcv::VideoWriter writer(filename, "", fps, pix_fmt); //equally. default codec is h264
+ffmpegcv::VideoWriter writer(filename, "h264", fps, pix_fmt);
+```
 
 To use the `hevc` codec, you can run
 ```cpp
@@ -175,6 +190,8 @@ Crop xywh rectangle from the video frame, via `crop_xywh`.
 ffmpegcv::VideoCapture cap(filename,
                             "bgr24",
                             {x, y, w, h}  //crop rectangle
+
+ffmpegcv::VideoCaptureNV cap_gpu(...)   //same for GPU
 );  
 // The origin point is top-left corner of video. 
 // All values should be even (x%2==0, y%2==0, w%2==0, h%2==0).
@@ -186,9 +203,12 @@ ffmpegcv::VideoCapture cap(filename,
                             "bgr24",
                             {0,0,0,0},  // no crop
                             {w, h}
+
+ffmpegcv::VideoCaptureNV cap_gpu(...)   //same for GPU
 );
 // All values should be even (w%2==0, h%2==0).
 ```
+Use the NVIDIA GPU can accelerate both ROI operations.
 
 
 ## Documentation
