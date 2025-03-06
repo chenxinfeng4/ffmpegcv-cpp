@@ -2,7 +2,7 @@
 #include "../../single_include/ffmpegcv.hpp"
 
 
-void fun_opt1(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
+void fun_opt1(ffmpegcv::VideoCapture &cap, ffmpegcv::VideoWriter &writer) {
     uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
     while (true) {
         if(cap.read(frame)) {  // Stream extraction
@@ -13,7 +13,7 @@ void fun_opt1(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
     delete[] frame;
 }
 
-void fun_opt2(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
+void fun_opt2(ffmpegcv::VideoCapture &cap, ffmpegcv::VideoWriter &writer) {
     uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
     while (true) {
         cap >> frame;  // Stream extraction
@@ -26,7 +26,7 @@ void fun_opt2(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
 }
 
 
-void fun_opt3(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
+void fun_opt3(ffmpegcv::VideoCapture &cap, ffmpegcv::VideoWriter &writer) {
     uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
     while (cap.isOpened()) {
         cap >> frame >> writer;  // Stream extraction and insertion
@@ -35,7 +35,7 @@ void fun_opt3(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
 }
 
 
-void fun_opt4(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
+void fun_opt4(ffmpegcv::VideoCapture &cap, ffmpegcv::VideoWriter &writer) {
     while (cap.isOpened()) {
         cap >> writer;  // Stream insertion
         uint8_t* frame = cap.getBuffer(); // Access current frame if needed
@@ -44,8 +44,8 @@ void fun_opt4(FFmpegVideoCapture &cap, FFmpegVideoWriter &writer) {
 
 
 int main(int argc, char* argv[]) {
-    FFmpegVideoCapture cap("../input.mp4");
-    FFmpegVideoWriter writer("../output.mp4", 
+    ffmpegcv::VideoCapture cap("../input.mp4");
+    ffmpegcv::VideoWriter writer("../output.mp4", 
                           "h264",                   // codec
                           cap.fps,                  // frame rate
                           {cap.width, cap.height}  // frame size

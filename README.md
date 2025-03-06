@@ -5,7 +5,7 @@
 FFmpegCV provides high-performance video reading and writing capabilities using FFmpeg as its backend. Designed as a drop-in replacement for OpenCV's video I/O functionality, it offers:
 
 - 🚀 **Fast Speed** through FFmpeg integration
-- 📦 **Lightweight Architecture** - Zero OpenCV dependencies (1KB vs OpenCV's 500MB+)
+- 📦 **Lightweight Architecture** - Zero OpenCV dependencies (20 KB vs OpenCV's 500 MB+)
 - 🌐 **Universal Compatibility** - Windows/Linux/macOS with consistent API
 - 🎨 **Multi-ColorSpace Support** - Native RGB24, BGR24, YUV420P, and Grayscale
 - 💾 **Direct Memory Access** - Frame data stored in contiguous `uint8_t` arrays
@@ -21,6 +21,8 @@ For Python users, check out the [Python version of FFmpegCV](https://github.com/
     - **macOS** (homebrew): `brew install ffmpeg`
     - **Windows** : Download FFmpeg and add it to your system *path*
     - **Conda** : `conda install -c conda-forge ffmpeg=6.0.0` (Avoid using default 4.x.x versions)
+
+    Test the installation by running `ffmpeg -version` in your terminal.
 
 2. Obtain the FFMPEGCV header:
     ```bash
@@ -40,11 +42,11 @@ For Python users, check out the [Python version of FFmpegCV](https://github.com/
 
 int main() {
     // Initialize video capture
-    FFmpegVideoCapture cap("input.mp4");
+    ffmpegcv::VideoCapture cap("input.mp4");
     auto frame_size = {cap.width, cap.height};
     
     // Initialize video writer (H.264 codec)
-    FFmpegVideoWriter writer("output.mp4", "h264", cap.fps, frame_size);
+    ffmpegcv::VideoWriter writer("output.mp4", "h264", cap.fps, frame_size);
     
     // Frame buffer (BGR format)
     uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
@@ -89,7 +91,7 @@ int main() {
 #include "ffmpegcv.hpp"
 
 int main() {
-    FFmpegVideoCapture cap("input.mp4");
+    ffmpegcv::VideoCapture cap("input.mp4");
     uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
 
     while (cap.read(frame)) {
@@ -106,8 +108,8 @@ int main() {
 
 ### Stream-like API
 ```cpp
-FFmpegVideoCapture cap("input.mp4");
-FFmpegVideoWriter writer("output.mp4", "h264", cap.fps, {cap.width, cap.height});
+ffmpegcv::VideoCapture cap("input.mp4");
+ffmpegcv::VideoWriter writer("output.mp4", "h264", cap.fps, {cap.width, cap.height});
 uint8_t* frame = new uint8_t[cap.height * cap.width * 3];
 
 while (true) {
@@ -125,9 +127,9 @@ writer.release()
 ### Efficient Transcoding
 ```cpp
 // Direct pipe-through with YUV420P format
-FFmpegVideoCapture cap("input.mp4", "yuv420p");
-FFmpegVideoWriter writer("output.mp4", "h264", cap.fps, 
-                        {cap.width, cap.height}, cap.pix_fmt);
+ffmpegcv::VideoCapture cap("input.mp4", "yuv420p");
+ffmpegcv::VideoWriter writer("output.mp4", "h264", cap.fps, 
+                            {cap.width, cap.height}, cap.pix_fmt);
 
 while (cap.isOpened()) {
     cap >> writer;  // Direct stream transfer
@@ -148,7 +150,7 @@ Please run `ffmpeg -codecs` in your terminal to get the list of supported codecs
 
 To use the `hevc` codec, you can run
 ```cpp
-FFmpegVideoWriter writer(filename, "hevc", fps, pix_fmt);
+ffmpegcv::VideoWriter writer(filename, "hevc", fps, pix_fmt);
 ```
 
 ## Supported Color Spaces
@@ -163,16 +165,16 @@ FFmpegCV **only supports common color spaces** for video processing.
 
 To use the `gray` codec, you can run
 ```cpp
-FFmpegVideoCapture cap(filename, "gray");
-FFmpegVideoWriter writer(filename, codec, fps, "gray");
+ffmpegcv::VideoCapture cap(filename, "gray");
+ffmpegcv::VideoWriter writer(filename, codec, fps, "gray");
 ```
 
 ## Supported ROI Operations
 Crop xywh rectangle from the video frame, via `crop_xywh`.
 ```cpp
-FFmpegVideoCapture cap(filename,
-                       "bgr24",
-                       {x, y, w, h}  //crop rectangle
+ffmpegcv::VideoCapture cap(filename,
+                            "bgr24",
+                            {x, y, w, h}  //crop rectangle
 );  
 // The origin point is top-left corner of video. 
 // All values should be even (x%2==0, y%2==0, w%2==0, h%2==0).
@@ -180,10 +182,10 @@ FFmpegVideoCapture cap(filename,
 
 Resize the video frame, via `resize`.
 ```cpp
-FFmpegVideoCapture cap(filename,
-                       "bgr24",
-                       {0,0,0,0},  // no crop
-                       {w, h}
+ffmpegcv::VideoCapture cap(filename,
+                            "bgr24",
+                            {0,0,0,0},  // no crop
+                            {w, h}
 );
 // All values should be even (w%2==0, h%2==0).
 ```
@@ -192,8 +194,8 @@ FFmpegVideoCapture cap(filename,
 ## Documentation
 | Class                | Methods                          | Properties                  |
 |----------------------|----------------------------------|-----------------------------|
-| `FFmpegVideoCapture` | `read()`, `isOpened()`, `release()` | `width`, `height`, `fps`, `codec`, `count` |
-| `FFmpegVideoWriter`  | `write()`, `release()`           | `width`, `height`, `fps`, `codec`|
+| `ffmpegcv::VideoCapture` | `read()`, `isOpened()`, `release()` | `width`, `height`, `fps`, `codec`, `count` |
+| `ffmpegcv::VideoWriter`  | `write()`, `release()`           | `width`, `height`, `fps`, `codec`|
 
 ## License
 MIT License - Free for commercial and personal use

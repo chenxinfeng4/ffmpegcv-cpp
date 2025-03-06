@@ -1,11 +1,11 @@
 
 Read the video file frame by frame, rewrite it to the file.
 ```cpp
-FFmpegVideoCapture cap("../input.mp4");
-FFmpegVideoWriter out("../output.mp4", 
-                        "x264",                   // codec
+ffmpegcv::VideoCapture cap("../input.mp4");
+ffmpegcv::VideoWriter writer("../output.mp4", 
+                        "h264",                   // codec
                         cap.fps,                  // frame rate
-                        {cap.width, cap.height},  // frame size
+                        {cap.width, cap.height}  // frame size
 );
 
 uint8_t* frame = new uint8_t[cap.height * cap.width * 3];

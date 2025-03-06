@@ -1,7 +1,7 @@
 
 Read the video file frame by frame, and display the information.
 ```cpp
-FFmpegVideoCapture cap("../input.mp4");
+ffmpegcv::VideoCapture cap("../input.mp4");
 std::cout << "Video resolution: " << cap.width << "x" << cap.height << std::endl
             << "Video fps: " << cap.fps << std::endl
             << "Video frame count: " << cap.count << std::endl

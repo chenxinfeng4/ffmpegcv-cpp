@@ -2,8 +2,8 @@
 Read the video file frame by frame, rewrite it to the file.
 Use the `yuv420p` pixel format.
 ```cpp
-FFmpegVideoCapture cap("../input.mp4", "yuv420p");
-FFmpegVideoWriter writer("../output.mp4", 
+ffmpegcv::VideoCapture cap("../input.mp4", "yuv420p");
+ffmpegcv::VideoWriter writer("../output.mp4", 
                         "h264",                   // codec
                         cap.fps,                  // frame rate
                         {cap.width, cap.height},  // frame size
