@@ -142,12 +142,20 @@ while (cap.isOpened()) {
 ```
 
 ## GPU support (NVIDIA only)
-Use GPU to accelerate decoding. It depends on the video codes.
-h264_nvcuvid, hevc_nvcuvid ....
+Use GPU to accelerate decoding and encoding, via changing `VideoCapture` and `VideoWriter` to `VideoCaptureNV` and `VideoCaptureNV` respectively.
+
+The decoder-codecs support wide-range, including `h264`, `hevc`, `mpeg4`, `mjpeg` and more.
 ```c++
-auto cap_cpu  = ffmpegcv::VideoCapture(file)
-auto cap_gpu  = ffmpegcv::VideoCaptureNV(file)         #NVIDIA GPU0
-auto cap_gpu1 = ffmpegcv::VideoCaptureNV(file, ..., gpu=1)  #NVIDIA GPU1
+ffmpegcv::VideoCapture   cap_cpu(file);
+ffmpegcv::VideoCaptureNV cap_gpu(file);              #NVIDIA GPU0
+ffmpegcv::VideoCaptureNV cap_gpu1(file, ..., gpu=1)  #NVIDIA GPU1
+```
+
+The encoder-codecs support `h264` and `hevc` only.
+```cpp
+ffmpegcv::VideoCapture   writer_cpu(file, "h264", fps, pix_fmt, size_wh);
+ffmpegcv::VideoCaptureNV writer_gpu(...);             #NVIDIA GPU0
+ffmpegcv::VideoCaptureNV writer_gpu1(..., gpu=1)      #NVIDIA GPU1
 ```
 
 ## Codecs for Video Writer

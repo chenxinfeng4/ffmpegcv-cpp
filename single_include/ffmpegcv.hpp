@@ -91,7 +91,7 @@ public:
     VideoWriter(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt,
         std::string ffmpeg_output_opt = "");
     ~VideoWriter();
-    void initializer();
+    virtual void initializer();
     void release();
     void close();
     bool write(const void* frame);
@@ -210,6 +210,20 @@ private:
     int gpu = 0;
 };
 
+class VideoWriterNV: public VideoWriter {
+public:
+    VideoWriterNV();
+    VideoWriterNV(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, int isColor = true,
+        std::string ffmpeg_output_opt = "", int gpu = 0);
+    VideoWriterNV(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt,
+        std::string ffmpeg_output_opt = "", int gpu = 0);
+
+    void initializer() override;
+
+private:
+    int gpu = 0;
+};
+
 } //END NAMESPACE FFMPEGCV
 
 
@@ -226,6 +240,8 @@ namespace ffmpegcv{
 bool startsWith(const std::string& str, const std::string& prefix) {
     return str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0;
 }
+std::string decoder_to_nvidia(const std::string& codec);
+std::string encoder_to_nvidia(const std::string& codec);
 
 std::string get_file_extension(const std::string& filename) {
     const size_t pos = filename.find_last_of('.');
@@ -446,6 +462,60 @@ bool VideoWriter::isOpened() const {
     return process || waitInit;
 }
 
+VideoWriterNV::VideoWriterNV(): VideoWriter(){;}
+
+VideoWriterNV::VideoWriterNV(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, int isColor,
+        std::string ffmpeg_output_opt, int gpu){
+    this->filename = filename;
+    this->codec = codec;
+    this->fps = fps;
+    this->size_wh = size_wh;
+    this->pix_fmt = isColor ? "bgr24" : "gray";
+    this->ffmpeg_output_opt = ffmpeg_output_opt;
+    this->gpu = gpu;
+    initializer();
+}
+
+VideoWriterNV::VideoWriterNV(const std::string& filename, const std::string& codec, double fps, Size_wh size_wh, std::string pix_fmt,
+        std::string ffmpeg_output_opt, int gpu){
+    this->filename = filename;
+    this->codec = codec;
+    this->fps = fps;
+    this->size_wh = size_wh;
+    this->pix_fmt = pix_fmt;
+    this->ffmpeg_output_opt = ffmpeg_output_opt;
+    this->gpu = gpu;
+    initializer();
+}
+
+
+void VideoWriterNV::initializer(){
+    int numGPU = get_num_NVIDIA_GPUs();
+    assert (numGPU > 0 && "No NVIDIA GPU found");
+    gpu = gpu % numGPU;
+
+    codec = codec.empty() ? "h264" : codec;
+    std::string codec_gpu = encoder_to_nvidia(codec);
+    width = size_wh.width;
+    height = size_wh.height;
+    process = 0;
+    std::string rtsp_str = startsWith(filename, "rtsp://") ? " -f rtsp -rtsp_transport tcp " : " ";
+
+    std::ostringstream oss;
+    oss << "ffmpeg -y -loglevel warning -f rawvideo -pix_fmt " << pix_fmt
+        << " -s " << width << "x" << height << " -r " << fps
+        << " -i pipe: -c:v " << codec_gpu << " -gpu " << gpu
+        << " -pix_fmt " << output_pix_fmt
+        << ffmpeg_output_opt << rtsp_str << " \"" << filename << "\"";
+    ffmpeg_cmd = oss.str();
+    std::cout << "ffmpeg_cmd: " << ffmpeg_cmd << std::endl;
+
+    innumpyshape = get_outnumpyshape(size_wh, pix_fmt);
+    bytes_per_frame = 1;
+    for (int num : innumpyshape) {
+        bytes_per_frame *= num;
+    }
+}
 //================End Video Writer==================
 
 //================Begin Video Reader==================
@@ -692,6 +762,16 @@ std::string decoder_to_nvidia(const std::string& codec) {
     if (codec == "vp8") return "vp8_cuvid";
     if (codec == "vp9") return "vp9_cuvid";
     throw std::runtime_error("No NV codec found for " + codec);
+}
+
+std::string encoder_to_nvidia(const std::string& codec) {
+    if (codec == "")  return "hevc_nvenc";
+    if (codec == "h264") return "h264_nvenc";
+    if (codec == "x264") return "h264_nvenc";
+    if (codec == "hevc") return "hevc_nvenc";
+    if (codec == "x265") return "hevc_nvenc";
+    if (codec == "h265") return "hevc_nvenc";
+    return codec + "_nvenc";
 }
 
 int get_num_NVIDIA_GPUs() {
