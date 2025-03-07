@@ -22,6 +22,30 @@ namespace ffmpegcv {
 //================ End interface function ===============
 
 //================ Begin Video info ==================
+FILE* POPEN_R(const char* command) {
+#ifdef _WIN32
+    return _popen(command, "rb");  // Windows used _popen + binary mode
+#else
+    return popen(command, "r");   // Linux/Mac type
+#endif
+}
+
+FILE* POPEN_W(const char* command) {
+#ifdef _WIN32
+    return _popen(command, "wb");
+#else
+    return popen(command, "w");
+#endif
+}
+
+int PCLOSE(FILE* fp) {
+#ifdef _WIN32
+    return _pclose(fp);
+#else
+    return pclose(fp);
+#endif
+}
+
 std::string get_file_extension(const std::string& filename);
 std::string execute_command(const std::string& command);
 
@@ -70,7 +94,7 @@ public:
     void initializer();
     void release();
     void close();
-    bool write(const void* __restrict__ frame);
+    bool write(const void* frame);
 #ifdef OPENCV_CORE_TYPES_HPP
     bool write(cv::Mat& frame);
 #endif
@@ -103,9 +127,9 @@ std::tuple<Size_wh, Size_wh, std::string> get_videofilter_cpu(
 class VideoCapture {
 public:
     VideoCapture();
-    VideoCapture(const std::string& filename, int isColor = true, 
+    VideoCapture(const std::string& filename, int isColor = true,
         std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0}, Size_wh resize = Size_wh(0,0));
-    
+
     VideoCapture(const std::string& filename, std::string pix_fmt,
         std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0}, Size_wh resize = Size_wh(0,0));
 
@@ -114,7 +138,7 @@ public:
     virtual void release();
     void close();
     uint8_t* getBuffer();
-    virtual bool read(void *__restrict__ frame);
+    virtual bool read(void * frame);
     virtual std::tuple<bool, void *> read();
 #ifdef OPENCV_CORE_TYPES_HPP
     virtual bool read(cv::Mat& frame);
@@ -147,7 +171,7 @@ public:
 };
 
 
-class VideoReader: public VideoCapture {  
+class VideoReader: public VideoCapture {
 };
 //================End Video Reader==================
 
@@ -156,9 +180,9 @@ class VideoReader: public VideoCapture {
 class VideoCaptureStreamRT: public VideoCapture {
 public:
     VideoCaptureStreamRT();
-    VideoCaptureStreamRT(const std::string& filename, int isColor = true, 
+    VideoCaptureStreamRT(const std::string& filename, int isColor = true,
         std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0}, Size_wh resize = Size_wh(0,0));
-    
+
     VideoCaptureStreamRT(const std::string& filename, std::string pix_fmt,
         std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0}, Size_wh resize = Size_wh(0,0));
 
@@ -172,7 +196,7 @@ int get_num_NVIDIA_GPUs();
 class VideoCaptureNV: public VideoCapture {
 public:
     VideoCaptureNV();
-    VideoCaptureNV(const std::string& filename, int isColor = true, 
+    VideoCaptureNV(const std::string& filename, int isColor = true,
         std::tuple<int, int, int, int> crop_xywh = {0, 0, 0, 0},
         Size_wh resize = Size_wh(0,0), int gpu = 0);
 
@@ -189,9 +213,9 @@ private:
 } //END NAMESPACE FFMPEGCV
 
 
-void* operator>>(ffmpegcv::VideoCapture& cap, void* __restrict__ frame);
-void operator>>(void* __restrict__ frame, ffmpegcv::VideoWriter& writer);
-void operator<<(ffmpegcv::VideoWriter& writer, void* __restrict__ frame);
+void* operator>>(ffmpegcv::VideoCapture& cap, void* frame);
+void operator>>(void* frame, ffmpegcv::VideoWriter& writer);
+void operator<<(ffmpegcv::VideoWriter& writer, void* frame);
 void operator>>(ffmpegcv::VideoCapture& cap, ffmpegcv::VideoWriter& writer);
 
 
@@ -216,14 +240,14 @@ std::string get_file_extension(const std::string& filename) {
 
 std::string execute_command(const std::string& command) {
     std::string result;
-    FILE* stream = popen(command.c_str(), "r");
+    FILE* stream = POPEN_R(command.c_str());
     if (!stream) return result;
 
     char buffer[1024];
     while (fgets(buffer, sizeof(buffer), stream) != nullptr) {
         result += buffer;
     }
-    pclose(stream);
+    PCLOSE(stream);
     return result;
 }
 
@@ -235,7 +259,7 @@ bool file_exsits(const std::string& filename) {
 VideoInfo get_info(const std::string& filename) {
     assert (file_exsits(filename) && "File does not exist");
     static const std::vector<std::string> complex_formats = {"mkv", "flv", "ts"};
-    const bool is_complex = std::find(complex_formats.begin(), complex_formats.end(), 
+    const bool is_complex = std::find(complex_formats.begin(), complex_formats.end(),
         get_file_extension(filename)) != complex_formats.end();
 
     std::ostringstream cmd;
@@ -257,7 +281,7 @@ VideoInfo get_info(const std::string& filename) {
 
     std::smatch match;
     auto count_re = is_complex? nb_read_packets_re : frames_re;
-    
+
     if (std::regex_search(json_output, match, codec_re) && match.size() > 1) {
         info.codec = match[1];
     }
@@ -292,8 +316,8 @@ VideoInfo get_info_stream(const std::string& filename, int timeout=0, int durati
     std::string analyze_duration = " -analyzeduration " + std::to_string(duration_ms) + "000 ";
     std::ostringstream cmd;
     cmd << "ffprobe -v quiet -print_format json=compact=1 "
-        << rtsp_opt << analyze_duration 
-        << " -select_streams v:0 -show_format -show_streams \"" 
+        << rtsp_opt << analyze_duration
+        << " -select_streams v:0 -show_format -show_streams \""
         << filename << "\"";
 
     const std::string json_output = execute_command(cmd.str());
@@ -305,7 +329,7 @@ VideoInfo get_info_stream(const std::string& filename, int timeout=0, int durati
     static const std::regex rate_re( "r_frame_rate.: .(\\d+)/(\\d+)");
 
     std::smatch match;
-    
+
     if (std::regex_search(json_output, match, codec_re) && match.size() > 1) {
         info.codec = match[1];
     }
@@ -368,8 +392,8 @@ void VideoWriter::initializer(){
     std::string rtsp_str = startsWith(filename, "rtsp://") ? " -f rtsp -rtsp_transport tcp " : " ";
 
     std::ostringstream oss;
-    oss << "ffmpeg -y -loglevel warning -f rawvideo -pix_fmt " << pix_fmt 
-        << " -s " << width << "x" << height << " -r " << fps 
+    oss << "ffmpeg -y -loglevel warning -f rawvideo -pix_fmt " << pix_fmt
+        << " -s " << width << "x" << height << " -r " << fps
         << " -i pipe: -c:v " << codec << " -pix_fmt " << output_pix_fmt
         << ffmpeg_output_opt << rtsp_str << " \"" << filename << "\"";
     ffmpeg_cmd = oss.str();
@@ -389,7 +413,7 @@ VideoWriter::~VideoWriter() {
 
 void VideoWriter::release() {
     if (process) {
-        pclose(process);
+        PCLOSE(process);
         process = NULL;
     }
 }
@@ -398,9 +422,9 @@ void VideoWriter::close() {
     release();
 }
 
-bool VideoWriter::write(const void* __restrict__ frame) {
+bool VideoWriter::write(const void* frame) {
     if (waitInit){
-        process = popen(ffmpeg_cmd.c_str(), "w");
+        process = POPEN_W(ffmpeg_cmd.c_str());
         waitInit = false;
     }
     if (frame == NULL) return false;
@@ -442,7 +466,7 @@ std::tuple<Size_wh, Size_wh, std::string> get_videofilter_cpu(
     if (crop_w != 0 && crop_h != 0) {
         assert(crop_x % 2 == 0 && crop_y % 2 == 0 && crop_w % 2 == 0 && crop_h % 2 == 0);
         assert(crop_w <= origin_width && crop_h <= origin_height);
-        cropopt = "crop=" + std::to_string(crop_w) + ":" + std::to_string(crop_h) + 
+        cropopt = "crop=" + std::to_string(crop_w) + ":" + std::to_string(crop_h) +
                     ":" + std::to_string(crop_x) + ":" + std::to_string(crop_y);
     } else {
         crop_w = origin_width;
@@ -474,7 +498,7 @@ std::tuple<Size_wh, Size_wh, std::string> get_videofilter_cpu(
 
 VideoCapture::VideoCapture(){;}
 
-VideoCapture::VideoCapture(const std::string& filename, int isColor, 
+VideoCapture::VideoCapture(const std::string& filename, int isColor,
     std::tuple<int, int, int, int> crop_xywh, Size_wh resize):
     filename(filename), pix_fmt(isColor ? "bgr24" : "gray"), crop_xywh(crop_xywh), resize(resize){
     initializer();
@@ -507,7 +531,7 @@ void VideoCapture::initializer(){
     std::string filterstr = std::get<2>(filter_options);
     width = size_wh.width;
     height = size_wh.height;
-    
+
     // 初始化 ffmpeg 的 VideoCapture
     std::ostringstream oss;
     oss << "ffmpeg -y -loglevel warning -i \"" << filename << "\" -f rawvideo "
@@ -535,7 +559,7 @@ void VideoCapture::release() {
         default_buffer = NULL;
     }
     if (process) {
-        pclose(process);
+        PCLOSE(process);
         process = NULL;
     }
 }
@@ -551,9 +575,9 @@ uint8_t* VideoCapture::getBuffer() {
     return static_cast<uint8_t*>(default_buffer);
 }
 
-bool VideoCapture::read(void *__restrict__ frame) {
+bool VideoCapture::read(void * frame) {
     if (waitInit){
-        process = popen(ffmpeg_cmd.c_str(), "r");
+        process = POPEN_R(ffmpeg_cmd.c_str());
         waitInit = false;
     }
 
@@ -592,7 +616,7 @@ const int VideoCapture::len() {
 
 VideoCaptureStreamRT::VideoCaptureStreamRT():VideoCapture(){;}
 
-VideoCaptureStreamRT::VideoCaptureStreamRT(const std::string& filename, int isColor, 
+VideoCaptureStreamRT::VideoCaptureStreamRT(const std::string& filename, int isColor,
     std::tuple<int, int, int, int> crop_xywh, Size_wh resize):
     VideoCapture(){
     this->filename = filename;
@@ -633,12 +657,12 @@ void VideoCaptureStreamRT::initializer() {
     std::string filterstr = std::get<2>(filter_options);
     width = size_wh.width;
     height = size_wh.height;
-    
+
     std::string rtsp_opt = startsWith(filename, "rtsp://") ? "-rtsp_flags prefer_tcp -pkt_size 736 " : "";
-    
+
     // 初始化 ffmpeg 的 VideoCapture
     std::ostringstream oss;
-    oss << "ffmpeg -y -loglevel warning " << rtsp_opt 
+    oss << "ffmpeg -y -loglevel warning " << rtsp_opt
         << "-i \"" << filename << "\" -an -map 0:v -f rawvideo "
         << filterstr << " -pix_fmt " << pix_fmt << " pipe:";
 
@@ -709,7 +733,7 @@ std::tuple<Size_wh, Size_wh, std::string, std::string> get_videofilter_gpu(
         int left(crop_x);
         int bottom(origin_height - (crop_h + crop_y));
         int right(origin_width - (crop_x + crop_w));
-        cropopt = "-crop" + std::to_string(top) + "x" + std::to_string(bottom) + 
+        cropopt = "-crop" + std::to_string(top) + "x" + std::to_string(bottom) +
                     "x" + std::to_string(left) + "x" + std::to_string(right);
     } else {
         crop_w = origin_width;
@@ -739,7 +763,7 @@ std::tuple<Size_wh, Size_wh, std::string, std::string> get_videofilter_gpu(
 
 VideoCaptureNV::VideoCaptureNV():VideoCapture(){;}
 
-VideoCaptureNV::VideoCaptureNV(const std::string& filename, int isColor, 
+VideoCaptureNV::VideoCaptureNV(const std::string& filename, int isColor,
     std::tuple<int, int, int, int> crop_xywh, Size_wh resize, int gpu):
     VideoCapture(){
     this->filename = filename;
@@ -789,11 +813,11 @@ void VideoCaptureNV::initializer() {
     std::string filterstr = std::get<3>(filter_options);
     width = size_wh.width;
     height = size_wh.height;
-    
+
     // 初始化 ffmpeg 的 VideoCapture
     std::ostringstream oss;
-    oss << "ffmpeg -loglevel warning -hwaccel cuda -hwaccel_device " 
-        << gpu << " -vcodec " << codec << " " << inputstr << " -i \"" 
+    oss << "ffmpeg -loglevel warning -hwaccel cuda -hwaccel_device "
+        << gpu << " -vcodec " << codec << " " << inputstr << " -i \""
         << filename << "\" -f rawvideo "
         << filterstr << " -pix_fmt " << pix_fmt << " pipe:";
 
@@ -811,16 +835,16 @@ void VideoCaptureNV::initializer() {
 } // END NAMESPACE ffmpegcv
 
 
-void* operator>>(ffmpegcv::VideoCapture& cap, void* __restrict__ frame) {
+void* operator>>(ffmpegcv::VideoCapture& cap, void* frame) {
     cap.read(frame);
     return frame;
 }
 
-void operator>>(void* __restrict__ frame, ffmpegcv::VideoWriter& writer) {
+void operator>>(void* frame, ffmpegcv::VideoWriter& writer) {
     writer.write(frame);
 }
 
-void operator<<(ffmpegcv::VideoWriter& writer, void* __restrict__ frame) {
+void operator<<(ffmpegcv::VideoWriter& writer, void* frame) {
     writer.write(frame);
 }
 
